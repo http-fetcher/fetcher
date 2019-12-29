@@ -44,15 +44,23 @@ func (s *server) handleUpdateCreate() http.HandlerFunc {
 	}
 }
 
-func (s *server) handleDelete() http.HandlerFunc {
+type IdHandlerFunc func(http.ResponseWriter, *http.Request, int)
+
+func withId(h IdHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		log.Printf("Deleting id: %d", id)
+		h(w, r, id)
 	}
+}
+
+func (s *server) handleDelete() http.HandlerFunc {
+	return withId(func(w http.ResponseWriter, r *http.Request, id int) {
+		log.Printf("Deleting id: %d", id)
+	})
 }
 
 func (s *server) handleList() http.HandlerFunc {
@@ -61,12 +69,7 @@ func (s *server) handleList() http.HandlerFunc {
 }
 
 func (s *server) handleHistory() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.Atoi(chi.URLParam(r, "id"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+	return withId(func(w http.ResponseWriter, r *http.Request, id int) {
 		log.Printf("History for id: %d", id)
-	}
+	})
 }
