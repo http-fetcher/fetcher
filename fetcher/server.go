@@ -4,6 +4,7 @@ import (
 	"github.com/go-chi/chi"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type server struct {
@@ -45,8 +46,12 @@ func (s *server) handleUpdateCreate() http.HandlerFunc {
 
 func (s *server) handleDelete() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
-		log.Printf("Deleting url id: %s", id)
+		id, err := strconv.Atoi(chi.URLParam(r, "id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		log.Printf("Deleting id: %d", id)
 	}
 }
 
@@ -57,6 +62,11 @@ func (s *server) handleList() http.HandlerFunc {
 
 func (s *server) handleHistory() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// id := chi.URLParam(r, "id")
+		id, err := strconv.Atoi(chi.URLParam(r, "id"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		log.Printf("History for id: %d", id)
 	}
 }
