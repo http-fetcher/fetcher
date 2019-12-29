@@ -37,6 +37,7 @@ func (s *server) handleUpdateCreate() http.HandlerFunc {
 		var in input
 		err := s.decode(w, r, &in)
 		if err != nil {
+			// TODO: figure out better way to check error type
 			if err.Error() == "http: request body too large" {
 				http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
 			} else {
