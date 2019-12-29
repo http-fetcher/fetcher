@@ -8,11 +8,12 @@ import (
 )
 
 type server struct {
+	maxBodySize int64
 	router *chi.Mux
 }
 
-func NewServer() *server {
-	s := &server{}
+func NewServer(maxBodySize int64) *server {
+	s := &server{maxBodySize: maxBodySize}
 	s.router = chi.NewRouter()
 	s.routes()
 	return s
@@ -20,6 +21,7 @@ func NewServer() *server {
 
 // make server an http.Handler
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, s.maxBodySize)
 	s.router.ServeHTTP(w, r)
 }
 
@@ -35,7 +37,11 @@ func (s *server) handleUpdateCreate() http.HandlerFunc {
 		var in input
 		err := s.decode(w, r, &in)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			if err.Error() == "http: request body too large" {
+				http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
+			} else {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			}
 			return
 		}
 		log.Printf("Input: %v", in)
