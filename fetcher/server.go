@@ -14,10 +14,10 @@ type server struct {
 	crawler *crawler
 }
 
-func NewServer(maxBodySize int64, crawler *crawler) *server {
+func NewServer(maxBodySize int64, router *chi.Mux, crawler *crawler) *server {
 	s := &server{maxBodySize: maxBodySize}
 	s.crawler = crawler
-	s.router = chi.NewRouter()
+	s.router = router
 	s.routes()
 	return s
 }
@@ -66,10 +66,10 @@ func withId(h IdHandlerFunc) http.HandlerFunc {
 
 func (s *server) handlePut() http.HandlerFunc {
 	type output struct {
-		Id int64
+		Id int64 `json:"id"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		var in spec
+		var in Spec
 		err := s.decode(w, r, &in)
 		if err != nil {
 			// TODO: figure out better way to check error type
@@ -80,7 +80,7 @@ func (s *server) handlePut() http.HandlerFunc {
 			}
 			return
 		}
-		log.Printf("Input: %v", in)
+		log.Printf("Put input: %v", in)
 		spec := s.crawler.put(in)
 		s.respond(w, r, output{Id: spec.Id}, http.StatusOK)
 	}
@@ -88,18 +88,30 @@ func (s *server) handlePut() http.HandlerFunc {
 
 func (s *server) handleDelete() http.HandlerFunc {
 	return withId(func(w http.ResponseWriter, r *http.Request, id int64) {
-		log.Printf("Deleting Id: %d", id)
-		s.crawler.del(id)
+		log.Printf("Delete id: %d", id)
+		err := s.crawler.del(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+		}
 	})
 }
 
 func (s *server) handleList() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("List")
+		specs := s.crawler.getSpecs()
+		s.respond(w, r, specs, http.StatusOK)
 	}
 }
 
 func (s *server) handleHistory() http.HandlerFunc {
 	return withId(func(w http.ResponseWriter, r *http.Request, id int64) {
-		log.Printf("History for Id: %d", id)
+		log.Printf("History id: %d", id)
+		results, err := s.crawler.getResults(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		s.respond(w, r, results, http.StatusOK)
 	})
 }
