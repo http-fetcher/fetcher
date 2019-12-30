@@ -88,12 +88,14 @@ func (c *crawler) crawl(ent *entry) {
 }
 
 func (c *crawler) task(e *entry) {
-	log.Printf("Starting task id: %d, url: %s", e.spec.Id, e.spec.Url)
+	log.Printf("Starting task id: %d, url: %s, interval: %d",
+		e.spec.Id, e.spec.Url, e.spec.Interval)
 	for {
 		c.crawl(e)
 		select {
 			case <- e.done:
-				log.Printf("Finising task id: %d, url: %s", e.spec.Id, e.spec.Url)
+				log.Printf("Finising task id: %d, url: %s, interval: %d",
+					e.spec.Id, e.spec.Url, e.spec.Interval)
 				return
 			case <- time.After(time.Duration(e.spec.Interval) * time.Second):
 		}
