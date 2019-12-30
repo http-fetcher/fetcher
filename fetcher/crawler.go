@@ -37,6 +37,13 @@ func newEntry(s Spec) *entry {
 	return ent
 }
 
+type Crawler interface {
+	Put(s Spec) Spec
+	Del(id int64) error
+	GetResults(id int64) ([]*Result, error)
+	GetSpecs() []*Spec
+}
+
 type crawler struct {
 	// Http client is safe for concurrent use
 	client *http.Client
@@ -102,7 +109,7 @@ func (c *crawler) task(e *entry) {
 	}
 }
 
-func (c *crawler) put(s Spec) Spec {
+func (c *crawler) Put(s Spec) Spec {
 	if s.Id == 0 {
 		s.Id = c.nextId()
 	}
@@ -122,7 +129,7 @@ func (c *crawler) put(s Spec) Spec {
 	return s
 }
 
-func (c *crawler) del(id int64) error {
+func (c *crawler) Del(id int64) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -137,7 +144,7 @@ func (c *crawler) del(id int64) error {
 	return nil
 }
 
-func (c *crawler) getResults(id int64) ([]*Result, error) {
+func (c *crawler) GetResults(id int64) ([]*Result, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -155,7 +162,7 @@ func (c *crawler) getResults(id int64) ([]*Result, error) {
 	return results, nil
 }
 
-func (c *crawler) getSpecs() []*Spec {
+func (c *crawler) GetSpecs() []*Spec {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 

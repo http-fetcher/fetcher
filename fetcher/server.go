@@ -11,10 +11,10 @@ import (
 type server struct {
 	maxBodySize int64
 	router *chi.Mux
-	crawler *crawler
+	crawler Crawler
 }
 
-func NewServer(maxBodySize int64, router *chi.Mux, crawler *crawler) *server {
+func NewServer(maxBodySize int64, router *chi.Mux, crawler Crawler) *server {
 	s := &server{maxBodySize: maxBodySize}
 	s.crawler = crawler
 	s.router = router
@@ -81,7 +81,7 @@ func (s *server) handlePut() http.HandlerFunc {
 			return
 		}
 		log.Printf("Put input: %v", in)
-		spec := s.crawler.put(in)
+		spec := s.crawler.Put(in)
 		s.respond(w, r, output{Id: spec.Id}, http.StatusOK)
 	}
 }
@@ -89,7 +89,7 @@ func (s *server) handlePut() http.HandlerFunc {
 func (s *server) handleDelete() http.HandlerFunc {
 	return withId(func(w http.ResponseWriter, r *http.Request, id int64) {
 		log.Printf("Delete id: %d", id)
-		err := s.crawler.del(id)
+		err := s.crawler.Del(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 		}
@@ -99,7 +99,7 @@ func (s *server) handleDelete() http.HandlerFunc {
 func (s *server) handleList() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("List")
-		specs := s.crawler.getSpecs()
+		specs := s.crawler.GetSpecs()
 		s.respond(w, r, specs, http.StatusOK)
 	}
 }
@@ -107,7 +107,7 @@ func (s *server) handleList() http.HandlerFunc {
 func (s *server) handleHistory() http.HandlerFunc {
 	return withId(func(w http.ResponseWriter, r *http.Request, id int64) {
 		log.Printf("History id: %d", id)
-		results, err := s.crawler.getResults(id)
+		results, err := s.crawler.GetResults(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
