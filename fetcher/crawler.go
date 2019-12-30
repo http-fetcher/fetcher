@@ -54,7 +54,7 @@ type crawler struct {
 	mutex *sync.RWMutex
 }
 
-func NewCrawler(client *http.Client) *crawler {
+func NewCrawler(client *http.Client) Crawler {
 	c := &crawler{client: client}
 	c.entries = make(map[int64]*entry)
 	c.mutex = &sync.RWMutex{}
