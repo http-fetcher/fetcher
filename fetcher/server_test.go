@@ -32,8 +32,8 @@ func (c *crawlerMock) GetSpecs() []*Spec {
 func TestHandlePut(t *testing.T) {
 	maxBodySize := int64(1024 * 1024)
 
-	crawler := &crawlerMock{id: 123}
-	srv := NewServer(maxBodySize, chi.NewRouter(), crawler)
+	crawlerMock := &crawlerMock{id: 123}
+	srv := NewServer(maxBodySize, chi.NewRouter(), crawlerMock)
 
 	s := Spec{Url: "https://httpbin.org/range/15", Interval: 60}
 	var body bytes.Buffer
@@ -57,7 +57,7 @@ func TestHandlePut(t *testing.T) {
 		t.Error("failed decoding output json")
 	}
 
-	if output.Id != 123 {
+	if output.Id != crawlerMock.id {
 		t.Error("returned invalid id")
 	}
 }
