@@ -59,6 +59,7 @@ func (c *crawler) crawl(e *entry) {
 }
 
 func (c *crawler) task(e *entry) {
+	log.Printf("Starting task Id: %d, Url: %s", e.spec.Id, e.spec.Url)
 	for {
 		c.crawl(e)
 		select {
@@ -75,13 +76,17 @@ func (c *crawler) put(s spec) spec {
 		s.Id = c.nextId()
 	}
 	ent := newEntry(s)
+
 	c.mutex.Lock()
+
 	entPrev, ok := c.entries[s.Id]
 	if ok {
 		close(entPrev.done)
 	}
+
 	go c.task(ent)
 	c.entries[s.Id] = ent
+
 	c.mutex.Unlock()
 	return s
 }
