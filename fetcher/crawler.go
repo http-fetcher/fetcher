@@ -94,7 +94,7 @@ func (c *crawler) task(e *entry) {
 		c.crawl(e)
 		select {
 			case <- e.done:
-				log.Printf("Finising task id: %d, url: %s, interval: %d",
+				log.Printf("Stopping task id: %d, url: %s, interval: %d",
 					e.spec.Id, e.spec.Url, e.spec.Interval)
 				return
 			case <- time.After(time.Duration(e.spec.Interval) * time.Second):
