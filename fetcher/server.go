@@ -1,6 +1,7 @@
 package fetcher
 
 import (
+	"encoding/json"
 	"github.com/go-chi/chi"
 	"log"
 	"net/http"
@@ -10,31 +11,65 @@ import (
 type server struct {
 	maxBodySize int64
 	router *chi.Mux
+	crawler *crawler
 }
 
-func NewServer(maxBodySize int64) *server {
+func NewServer(maxBodySize int64, crawler *crawler) *server {
 	s := &server{maxBodySize: maxBodySize}
+	s.crawler = crawler
 	s.router = chi.NewRouter()
 	s.routes()
 	return s
 }
 
-// make server an http.Handler
+func (s *server) routes() {
+	s.router.Post("/api/fetcher", s.handlePut())
+	s.router.Delete("/api/fetcher/{Id}", s.handleDelete())
+	s.router.Get("/api/fetcher", s.handleList())
+	s.router.Get("/api/fetcher/{Id}/history", s.handleHistory())
+}
+
+// Make server an http.Handler.
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, s.maxBodySize)
 	s.router.ServeHTTP(w, r)
 }
 
-func (s *server) handleUpdateCreate() http.HandlerFunc {
-	type input struct {
-		Url string
-		Interval int
+func (s *server) respond(w http.ResponseWriter, r *http.Request, data interface{}, status int) {
+	w.WriteHeader(status)
+	if data != nil {
+		err := json.NewEncoder(w).Encode(data)
+		if err != nil {
+			log.Print(err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
+}
+
+func (s *server) decode(w http.ResponseWriter, r *http.Request, v interface{}) error {
+	return json.NewDecoder(r.Body).Decode(v)
+}
+
+type IdHandlerFunc func(http.ResponseWriter, *http.Request, int64)
+
+func withId(h IdHandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "Id"), 10, 64)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		h(w, r, id)
+	}
+}
+
+func (s *server) handlePut() http.HandlerFunc {
 	type output struct {
-		Id int
+		Id int64
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		var in input
+		var in spec
 		err := s.decode(w, r, &in)
 		if err != nil {
 			// TODO: figure out better way to check error type
@@ -46,27 +81,15 @@ func (s *server) handleUpdateCreate() http.HandlerFunc {
 			return
 		}
 		log.Printf("Input: %v", in)
-		out := output{Id: 1}
-		s.respond(w, r, out, http.StatusOK)
-	}
-}
-
-type IdHandlerFunc func(http.ResponseWriter, *http.Request, int)
-
-func withId(h IdHandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.Atoi(chi.URLParam(r, "id"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		h(w, r, id)
+		spec := s.crawler.put(in)
+		s.respond(w, r, output{Id: spec.Id}, http.StatusOK)
 	}
 }
 
 func (s *server) handleDelete() http.HandlerFunc {
-	return withId(func(w http.ResponseWriter, r *http.Request, id int) {
-		log.Printf("Deleting id: %d", id)
+	return withId(func(w http.ResponseWriter, r *http.Request, id int64) {
+		log.Printf("Deleting Id: %d", id)
+		s.crawler.del(id)
 	})
 }
 
@@ -76,7 +99,7 @@ func (s *server) handleList() http.HandlerFunc {
 }
 
 func (s *server) handleHistory() http.HandlerFunc {
-	return withId(func(w http.ResponseWriter, r *http.Request, id int) {
-		log.Printf("History for id: %d", id)
+	return withId(func(w http.ResponseWriter, r *http.Request, id int64) {
+		log.Printf("History for Id: %d", id)
 	})
 }
